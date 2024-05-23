@@ -5,6 +5,7 @@ require "active_support/core_ext/module/attr_internal"
 require "active_support/core_ext/module/delegation"
 require "active_support/notifications"
 require "hashie"
+require "connection_pool"
 
 # stdlib
 require "forwardable"
@@ -67,45 +68,47 @@ module Searchkick
   self.model_options = {}
 
   def self.client
-    @client ||= begin
-      client_type =
-        if self.client_type
-          self.client_type
-        elsif defined?(OpenSearch::Client) && defined?(Elasticsearch::Client)
-          raise Error, "Multiple clients found - set Searchkick.client_type = :elasticsearch or :opensearch"
-        elsif defined?(OpenSearch::Client)
-          :opensearch
-        elsif defined?(Elasticsearch::Client)
-          :elasticsearch
+    @client ||= ::ConnectionPool::Wrapper.new(size: 5, timeout: 7) do
+      begin
+        client_type =
+          if self.client_type
+            self.client_type
+          elsif defined?(OpenSearch::Client) && defined?(Elasticsearch::Client)
+            raise Error, "Multiple clients found - set Searchkick.client_type = :elasticsearch or :opensearch"
+          elsif defined?(OpenSearch::Client)
+            :opensearch
+          elsif defined?(Elasticsearch::Client)
+            :elasticsearch
+          else
+            raise Error, "No client found - install the `elasticsearch` or `opensearch-ruby` gem"
+          end
+
+        # check after client to ensure faraday is installed
+        # TODO remove in Searchkick 6
+        if defined?(Typhoeus) && Gem::Version.new(Faraday::VERSION) < Gem::Version.new("0.14.0")
+          require "typhoeus/adapters/faraday"
+        end
+
+        if client_type == :opensearch
+          OpenSearch::Client.new({
+            url: ENV["OPENSEARCH_URL"],
+            transport_options: {request: {timeout: timeout}, headers: {content_type: "application/json"}},
+            retry_on_failure: 2
+          }.deep_merge(client_options)) do |f|
+            f.use Searchkick::Middleware
+            f.request :aws_sigv4, signer_middleware_aws_params if aws_credentials
+          end
         else
-          raise Error, "No client found - install the `elasticsearch` or `opensearch-ruby` gem"
-        end
+          raise Error, "The `elasticsearch` gem must be 7+" if Elasticsearch::VERSION.to_i < 7
 
-      # check after client to ensure faraday is installed
-      # TODO remove in Searchkick 6
-      if defined?(Typhoeus) && Gem::Version.new(Faraday::VERSION) < Gem::Version.new("0.14.0")
-        require "typhoeus/adapters/faraday"
-      end
-
-      if client_type == :opensearch
-        OpenSearch::Client.new({
-          url: ENV["OPENSEARCH_URL"],
-          transport_options: {request: {timeout: timeout}, headers: {content_type: "application/json"}},
-          retry_on_failure: 2
-        }.deep_merge(client_options)) do |f|
-          f.use Searchkick::Middleware
-          f.request :aws_sigv4, signer_middleware_aws_params if aws_credentials
-        end
-      else
-        raise Error, "The `elasticsearch` gem must be 7+" if Elasticsearch::VERSION.to_i < 7
-
-        Elasticsearch::Client.new({
-          url: ENV["ELASTICSEARCH_URL"],
-          transport_options: {request: {timeout: timeout}, headers: {content_type: "application/json"}},
-          retry_on_failure: 2
-        }.deep_merge(client_options)) do |f|
-          f.use Searchkick::Middleware
-          f.request :aws_sigv4, signer_middleware_aws_params if aws_credentials
+          Elasticsearch::Client.new({
+            url: ENV["ELASTICSEARCH_URL"],
+            transport_options: {request: {timeout: timeout}, headers: {content_type: "application/json"}},
+            retry_on_failure: 2
+          }.deep_merge(client_options)) do |f|
+            f.use Searchkick::Middleware
+            f.request :aws_sigv4, signer_middleware_aws_params if aws_credentials
+          end
         end
       end
     end

@@ -17,4 +17,5 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "activemodel", ">= 6.1"
   spec.add_dependency "hashie"
+  spec.add_dependency "connection_pool"
 end
