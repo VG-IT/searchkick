@@ -70,7 +70,7 @@ module Searchkick
       records = relation.select(&:should_index?)
 
       # determine which records to delete
-      delete_ids = record_ids - records.map { |r| r.id.to_s }
+      delete_ids = record_ids - records.map { |r| r.id }
       delete_records =
         delete_ids.map do |id|
           construct_record(klass, id, routing[id])
