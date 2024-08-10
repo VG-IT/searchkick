@@ -63,6 +63,7 @@ module Searchkick
     def reindex_items(klass, items, method_name:, single: false)
       routing = items.to_h { |r| [r[:id], r[:routing]] }
       record_ids = routing.keys
+      record_ids_s = record_ids.map(&:to_s)
 
       relation = Searchkick.load_records(klass, record_ids)
       # call search_import even for single records for nested associations
@@ -70,7 +71,7 @@ module Searchkick
       records = relation.select(&:should_index?)
 
       # determine which records to delete
-      delete_ids = record_ids - records.map { |r| r.id }
+      delete_ids = record_ids_s - records.map { |r| r.id.to_s }
       delete_records =
         delete_ids.map do |id|
           construct_record(klass, id, routing[id])
