@@ -450,7 +450,7 @@ module Searchkick
         dynamic_templates: [
           {
             string_template: {
-              match: "*",
+              match: options[:multi_field],
               match_mapping_type: "string",
               mapping: multi_field
             }
