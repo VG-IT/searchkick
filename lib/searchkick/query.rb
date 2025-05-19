@@ -390,7 +390,7 @@ module Searchkick
               f = field.split(".")[0..-2].join(".")
               queries_to_add << {match: {f => shared_options.merge(analyzer: "custom_exact")}}
               exclude_field = f
-              exclude_analyzer = "keyword"
+              exclude_analyzer = "custom_exact"
             else
               analyzer = field =~ /\.word_(start|middle|end)\z/ ? "searchkick_word_search" : "searchkick_autocomplete_search"
               qs << shared_options.merge(analyzer: analyzer)
