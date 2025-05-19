@@ -361,6 +361,8 @@ module Searchkick
                   end
 
                 :match_phrase
+              elsif field.end_with?(".exact_custom")
+                :match_phrase
               else
                 :match
               end
