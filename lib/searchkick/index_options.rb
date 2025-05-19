@@ -371,7 +371,7 @@ module Searchkick
         fields = {}
 
         if options.key?(:filterable) && !mapping_options[:filterable].include?(field)
-          fields[field] = {type: default_type, index: false}
+          fields[field] = {type: default_type}
         else
           fields[field] = keyword_mapping
         end
@@ -448,7 +448,7 @@ module Searchkick
       # http://www.elasticsearch.org/guide/reference/mapping/multi-field-type/
       multi_field = dynamic_fields["{name}"].merge(fields: dynamic_fields.except("{name}"))
 
-      if options[:multi_field].present?
+      if options[:multi_field] && options[:multi_field].any?
         # https://gist.github.com/kimchy/2898285
         mappings[:dynamic_templates] = [
           {
