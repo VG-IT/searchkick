@@ -440,14 +440,17 @@ module Searchkick
         end
       end
 
+      mappings = {
+        properties: mapping,
+        _routing: routing
+      }
+
       # http://www.elasticsearch.org/guide/reference/mapping/multi-field-type/
       multi_field = dynamic_fields["{name}"].merge(fields: dynamic_fields.except("{name}"))
 
-      mappings = {
-        properties: mapping,
-        _routing: routing,
+      if options[:multi_field].present?
         # https://gist.github.com/kimchy/2898285
-        dynamic_templates: [
+        mappings[:dynamic_templates] = [
           {
             string_template: {
               match: options[:multi_field],
@@ -456,7 +459,7 @@ module Searchkick
             }
           }
         ]
-      }
+      end
 
       mappings
     end
