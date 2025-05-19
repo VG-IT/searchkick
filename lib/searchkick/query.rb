@@ -388,7 +388,7 @@ module Searchkick
               exclude_analyzer = "keyword"
             elsif field.end_with?(".exact_custom")
               f = field.split(".")[0..-2].join(".")
-              queries_to_add << {match: {f => shared_options.merge(analyzer: "custom_exact")}}
+              queries_to_add << {match_phrase: {f => shared_options.merge(analyzer: "custom_exact")}}
               exclude_field = f
               exclude_analyzer = "custom_exact"
             else
